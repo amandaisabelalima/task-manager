@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo
+#    restart: always
+    container_name: mongodb-container
+    ports:
+      - 27017:27017
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: 1234567890
+      MONGO_INITDB_DATABASE: tasks-manager
+
+  mongo-express:
+      image: mongo-express
+      restart: always
+      container_name: mongo-express-container
+      ports:
+        - 8081:8081
+      depends_on:
+        - mongo
+      environment:
+        ME_CONFIG_MONGODB_ADMINUSERNAME: root
+        ME_CONFIG_MONGODB_ADMINPASSWORD: 1234567890
+        ME_CONFIG_MONGODB_URL: mongodb://root:1234567890@mongo:27017
+        ME_CONFIG_BASICAUTH_USERNAME: admin
+        ME_CONFIG_BASICAUTH_PASSWORD: admin
+
+
+
+#  app:
+#    build:
+#      context: .
+#      dockerfile: Dockerfile
+#    ports:
+#      - "8080:8080"
+#    depends_on:
+#      - mongo
+#    environment:
+#      - SPRING_DATA_MONGODB_URI=mongodb://mongo:27017/tasks
+#  mongo:
+#    image: mongo
+#    ports:
+#      - "27017:27017"

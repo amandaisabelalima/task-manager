@@ -1,0 +1,26 @@
+server:
+    port: 8082
+
+spring:
+    application:
+        name: task-manager
+    data:
+        mongodb:
+#            host: localhost
+            uri: mongodb://root:1234567890@localhost:27017/tasks-manager?authSource=admin
+            port: 27017
+            database: tasks-manager
+            username: root
+            password: 1234567890
+            authentication-database: admin
+            repositories:
+                enable: true
+
+logging:
+    level:
+        org:
+            springframework:
+                data:
+                    mongodb: DEBUG
+
+
