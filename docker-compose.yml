@@ -3,7 +3,7 @@ version: '3.8'
 services:
   mongo:
     image: mongo
-#    restart: always
+    restart: always
     container_name: mongodb-container
     ports:
       - 27017:27017
@@ -27,19 +27,14 @@ services:
         ME_CONFIG_BASICAUTH_USERNAME: admin
         ME_CONFIG_BASICAUTH_PASSWORD: admin
 
-
-
-#  app:
-#    build:
-#      context: .
-#      dockerfile: Dockerfile
-#    ports:
-#      - "8080:8080"
-#    depends_on:
-#      - mongo
-#    environment:
-#      - SPRING_DATA_MONGODB_URI=mongodb://mongo:27017/tasks
-#  mongo:
-#    image: mongo
-#    ports:
-#      - "27017:27017"
+  localstack:
+    image: localstack/localstack:latest
+    container_name: localstack-container
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3
+      - AWS_DEFAULT_REGION=us-east-1
+      - DEFAULT_REGION=us-east-1
+    volumes:
+      - ./localstack:/var/lib/localstack #entender exatamente o que é e ver se precisa colocar nos outros

@@ -6,7 +6,6 @@ spring:
         name: task-manager
     data:
         mongodb:
-#            host: localhost
             uri: mongodb://root:1234567890@localhost:27017/tasks-manager?authSource=admin
             port: 27017
             database: tasks-manager
@@ -15,6 +14,14 @@ spring:
             authentication-database: admin
             repositories:
                 enable: true
+
+aws:
+    s3:
+        bucket:
+            name: task-manager-bucket
+        access-key-id: accesskey
+        secret-access-key: secretKey
+        localstack-url: http://localhost:4566
 
 logging:
     level:

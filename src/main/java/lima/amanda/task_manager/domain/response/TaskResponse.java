@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -18,7 +19,7 @@ public class TaskResponse {
     private String title;
     private String description;
     private TaskStatus status;
+    private List<String> urlsAttachmentDownload;
     private LocalDateTime datCreation;
-    private LocalDateTime datUpdate; //só pra teste, remover depois
 
 }

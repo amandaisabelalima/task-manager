@@ -4,53 +4,83 @@ import lima.amanda.task_manager.domain.entity.TaskEntity;
 import lima.amanda.task_manager.domain.enumeration.TaskStatus;
 import lima.amanda.task_manager.domain.mapper.TaskMapper;
 import lima.amanda.task_manager.domain.request.TaskRequest;
+import lima.amanda.task_manager.domain.response.TaskResponse;
 import lima.amanda.task_manager.exceptions.TaskNotFoundException;
 import lima.amanda.task_manager.repository.TaskRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
+import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class TaskService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TaskService.class);
 
-    @Autowired
-    TaskRepository taskRepository;
+    private final TaskRepository taskRepository;
 
-    @Autowired
-    TaskMapper taskMapper;
+    private final TaskMapper taskMapper;
 
-    //TODO ajustar os métodos para nao devolver a Entity para o controler. O mapper que está no controller joga pra cá!!!!!
+    private final S3Service s3Service;
 
-    public Mono<TaskEntity> create(final TaskRequest task) {
-        return Mono.just(task)
-                .map(m -> taskMapper.buildTaskEntity(task)) //mapper
-                .flatMap(this::save)
-                .doOnError(error -> LOGGER.error("M=create, E=Erro ao criar a task, title={}", task.getTitle(), error));
+    public TaskService(TaskRepository taskRepository, TaskMapper taskMapper, S3Service s3Service) {
+        this.taskRepository = taskRepository;
+        this.taskMapper = taskMapper;
+        this.s3Service = s3Service;
+    }
+
+    public Mono<TaskResponse> create(final TaskRequest task) {
+        Flux<FilePart> attachments = task.getAttachments();
+
+        return attachments.collectList()
+                .flatMap(attachmentList -> {
+                    List<String> attachmentKeys = new ArrayList<>();
+                    if (attachmentList.isEmpty()) { // ou size = 1 mas o value for null
+                        return saveTask(task, null);
+                    } else {
+                        return saveAttachments(attachmentList, attachmentKeys)
+                                .then(Mono.defer(() -> saveTask(task, attachmentKeys)));
+                    }
+                });
+    }
+
+    private Flux<String> saveAttachments(List<FilePart> attachmentList, List<String> attachmentKeys) {
+        LOGGER.info("M=saveAttachments, I=Starting to save attachments");
+        return Flux.fromIterable(attachmentList)
+                .flatMap(filePart -> s3Service.uploadFileToS3(Flux.just(filePart))
+                        .doOnNext(attachmentKeys::add));
+    }
+
+
+    private Mono<TaskResponse> saveTask(TaskRequest task, List<String> attachment) {
+        return save(taskMapper.buildTaskEntity(task, attachment))
+                .map(m -> taskMapper.buildTaskResponse(m, null))
+                .doOnSuccess(it -> LOGGER.info("M=prepareToSave, I=Task created successfully, title={}", it.getTitle()))
+                .doOnError(error -> LOGGER.info("M=prepareToSave, E=Error creating task, title={}", task.getTitle(), error));
     }
 
     private Mono<TaskEntity> save(final TaskEntity task) {
         return Mono.just(task)
-                .doOnNext(it -> LOGGER.info("M=save, I=Iniciando a criacao da task, title={}", it.getTitle()))
+                .doOnNext(it -> LOGGER.info("M=save, I=Starting task creation, title={}", it.getTitle()))
                 .flatMap(taskRepository::save);
     }
 
-    public Flux<TaskEntity> findActiveTasks() {
+    public Flux<TaskResponse> findActiveTasks() {
         return taskRepository.findByIndActiveTrue()
-                .doOnError(error -> LOGGER.error("M=findActiveTasks, E=Erro ao buscar as tasks na base", error));
+                .doOnError(error -> LOGGER.error("M=findActiveTasks, E=Error when searching for tasks", error))
+                .flatMap(this::complementResponseWithAttachmentLinks);
     }
 
-    public Flux<TaskEntity> findTasksByStatus(final TaskStatus status) {
+    public Flux<TaskResponse> findTasksByStatus(final TaskStatus status) {
         return taskRepository.findTasksByIndActiveTrueAndStatus(status)
-                .doOnError(error -> LOGGER.error("M=findTasksByStatus, E=Erro ao buscar tasks por status"));
+                .doOnError(error -> LOGGER.error("M=findTasksByStatus, E=Error when searching for tasks by status"))
+                .flatMap(this::complementResponseWithAttachmentLinks);
     }
 
     public Mono<Void> delete(final String id) {
@@ -61,7 +91,19 @@ public class TaskService {
                     task.setDatUpdate(LocalDateTime.now());
                     return taskRepository.save(task);
                 })
-                .doOnError(error -> LOGGER.error("M=delete, E=Erro ao deletar a task, id={}", id, error))
+                .doOnError(error -> LOGGER.error("M=delete, E=Error when deleting task, id={}", id, error))
                 .then();
+    }
+
+    private Mono<TaskResponse> complementResponseWithAttachmentLinks(TaskEntity task) {
+        List<String> attachmentKeys = task.getAttachments();
+        if (attachmentKeys == null || attachmentKeys.isEmpty()) {
+            return Mono.just(taskMapper.buildTaskResponse(task, null));
+        } else {
+            return Flux.fromIterable(attachmentKeys)
+                    .flatMap(s3Service::generateUrlToFileDownload)
+                    .collectList()
+                    .map(urls -> taskMapper.buildTaskResponse(task, urls));
+        }
     }
 }
