@@ -38,7 +38,7 @@ public class TaskController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Mono<TaskResponse> create(@RequestParam("title") String title,
-                                     @RequestParam("description") String description,
+                                     @RequestParam(value = "description", required = false) String description,
                                      @RequestPart(value = "attachments", required = false) Flux<FilePart> attachment) {
         return taskService.create(taskMapper.buildTaskRequest(title, description, attachment));
     }
