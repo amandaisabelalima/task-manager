@@ -37,4 +37,4 @@ services:
       - AWS_DEFAULT_REGION=us-east-1
       - DEFAULT_REGION=us-east-1
     volumes:
-      - ./localstack:/var/lib/localstack #entender exatamente o que é e ver se precisa colocar nos outros
+      - ./localstack:/var/lib/localstack

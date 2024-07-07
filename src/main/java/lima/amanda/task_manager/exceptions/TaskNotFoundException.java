@@ -6,4 +6,8 @@ public class TaskNotFoundException extends RuntimeException {
         super("Task not found with id: " + id);
     }
 
+    public TaskNotFoundException() {
+        super("Tasks not found.");
+    }
+
 }
