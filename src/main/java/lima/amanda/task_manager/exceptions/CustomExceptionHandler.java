@@ -69,6 +69,14 @@ public class CustomExceptionHandler {
         return new ResponseEntity<>(errorResponse, ex.getStatusCode());
     }
 
+    @ExceptionHandler(InvalidFileExtensionException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Mono<ResponseEntity<Map<String, String>>> handleInvalidFileExtensionException(InvalidFileExtensionException ex) {
+        Map<String, String> response = new HashMap<>();
+        response.put("error", ex.getMessage());
+        return buildErrorResponseMono(response);
+    }
+
     private static Mono<ResponseEntity<Map<String, String>>> buildErrorResponseMono(Map<String, String> response) {
         return Mono.just(ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .contentType(MediaType.APPLICATION_JSON)

@@ -55,7 +55,7 @@ public class TaskController {
     public Mono<TaskResponse> create(@RequestParam("title") String title,
                                      @RequestParam(value = "description", required = false) String description,
                                      @RequestPart(value = "attachments", required = false) Flux<FilePart> attachment) {
-        return taskService.create(taskMapper.buildTaskRequest(title, description, attachment));
+        return taskService.create(title, description, attachment);
     }
 
     @GetMapping

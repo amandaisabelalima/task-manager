@@ -6,6 +6,7 @@ import lima.amanda.task_manager.domain.mapper.TaskMapper;
 import lima.amanda.task_manager.domain.request.TaskRequest;
 import lima.amanda.task_manager.domain.request.TaskUpdateRequest;
 import lima.amanda.task_manager.domain.response.TaskResponse;
+import lima.amanda.task_manager.domain.validator.FileValidator;
 import lima.amanda.task_manager.exceptions.TaskNotFoundException;
 import lima.amanda.task_manager.repository.TaskRepository;
 import org.slf4j.Logger;
@@ -30,23 +31,32 @@ public class TaskService {
 
     private final S3Service s3Service;
 
-    public TaskService(TaskRepository taskRepository, TaskMapper taskMapper, S3Service s3Service) {
+    private final FileValidator fileValidator;
+
+    public TaskService(TaskRepository taskRepository, TaskMapper taskMapper, S3Service s3Service, FileValidator fileValidator) {
         this.taskRepository = taskRepository;
         this.taskMapper = taskMapper;
         this.s3Service = s3Service;
+        this.fileValidator = fileValidator;
     }
 
-    public Mono<TaskResponse> create(final TaskRequest task) {
-        Flux<FilePart> attachments = task.getAttachments();
+    public Mono<TaskResponse> create(final String title, final String description, Flux<FilePart> attachment) {
+        TaskRequest taskRequest = taskMapper.buildTaskRequest(title, description, attachment);
 
-        return attachments.collectList()
+        return fileValidator.validateFileParts(attachment).then(
+                prepareToCreate(attachment, taskRequest)
+        );
+    }
+
+    private Mono<TaskResponse> prepareToCreate(Flux<FilePart> attachment, TaskRequest taskRequest) {
+        return attachment.collectList()
                 .flatMap(attachmentList -> {
                     List<String> attachmentKeys = new ArrayList<>();
-                    if (attachmentList.isEmpty()) { // ou size = 1 mas o value for null
-                        return saveTask(task, null);
+                    if (attachmentList.isEmpty()) {
+                        return saveTask(taskRequest, null);
                     } else {
                         return saveAttachments(attachmentList, attachmentKeys)
-                                .then(Mono.defer(() -> saveTask(task, attachmentKeys)));
+                                .then(Mono.defer(() -> saveTask(taskRequest, attachmentKeys)));
                     }
                 });
     }
@@ -59,7 +69,6 @@ public class TaskService {
     }
 
     private Flux<String> deleteAttachments(List<FilePart> attachmentList, List<String> attachmentKeys) {
-        LOGGER.info("M=saveAttachments, I=Starting to save attachments");
         return Flux.fromIterable(attachmentList)
                 .flatMap(filePart -> s3Service.uploadFileToS3(Flux.just(filePart))
                         .doOnNext(attachmentKeys::add));
