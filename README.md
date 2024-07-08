@@ -2,7 +2,7 @@
 
 ## Descrição
 
-Este projeto é uma API de gerenciamento de tarefas que permite aos usuários:
+Essa aplicação é uma API de gerenciamento de tarefas que permite aos usuários:
 - Criar uma nova tarefa.
 - Listar todas as tarefas.
 - Atualizar uma tarefa existente.
@@ -10,41 +10,16 @@ Este projeto é uma API de gerenciamento de tarefas que permite aos usuários:
 - Buscar tarefas por status (concluída/não concluída).
 
 ---
+
 ## Endpoints da API
 
-### Criar Tarefa
-
-**Endpoint:** POST /api/tasks
-
-**Descrição:** Cria uma nova tarefa com anexos.
-
-
-### Buscar Tarefas 
-
-**Endpoint:** GET /api/tasks
-
-**Descrição:** Busca todas as tarefas ativas.
-
-
-### Buscar Tarefas por Status
-
-**Endpoint:** GET /api/tasks/status?status={status}
-
-**Descrição:** Busca tarefas por um status específico: COMPLETED ou NOT_COMPLETED.
-
-
-### Atualizar Tarefa
-
-**Endpoint:** PUT /api/tasks
-
-**Descrição:** Altera os dados de uma tarefa. Possíveis alterações: título, descrição e status.
-
-
-### Deletar Tarefa
-
-**Endpoint:** DELETE /api/tasks/{id}
-
-**Descrição:** Deleta uma tarefa com base no ID.
+```markdown
+POST /api/tasks - Criar uma tarefa
+GET /api/tasks - Buscar Tarefas
+GET /api/tasks/status - Buscar Tarefas por Status
+PUT /api/tasks - Atualizar Tarefa
+DELETE /api/tasks/{id} - Deletar Tarefa
+```
 
 ---
 
@@ -82,6 +57,19 @@ docker-compose up -d
 
 - Bucket criado na S3 AWS, para visualizar todos os arquivos feitos upload fica disponível em: `http://localhost:4566/task-manager-bucket`
 
+----
 
 
+## Observações sobre os entregáveis
+
+- A API com todos os endpoints está completa e funcional
+
+
+- Os arquivos anexados em uma tarefa são salvos na AWS S3 e na listagem das tarefas é exibido os links para download
+
+
+- O fluxo de autenticação e autorização está todo comentado porque estava dando alguns problemas que acabou levando muito tempo e com isso ficou pendente de finalização
+
+
+- Pelo tempo gasto no problema da autenticação os testes também ficaram incompletos
 
