@@ -2,14 +2,20 @@ package lima.amanda.task_manager.controller;
 
 import lima.amanda.task_manager.domain.enumeration.TaskStatus;
 import lima.amanda.task_manager.domain.mapper.TaskMapper;
+import lima.amanda.task_manager.domain.request.TaskRequest;
 import lima.amanda.task_manager.domain.response.TaskResponse;
 import lima.amanda.task_manager.exceptions.TaskNotFoundException;
 import lima.amanda.task_manager.service.TaskService;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import org.springframework.web.reactive.function.BodyInserters;
+import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -17,13 +23,13 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
-
-@WebFluxTest(TaskController.class) //a classe que ele vai usar para o teste
+@WebFluxTest(TaskController.class)
 class TaskControllerTest {
 
-    @MockBean //as dependencias dessa classe que preciso mockar
+    @MockBean
     private TaskService taskService;
 
     @MockBean
@@ -31,50 +37,6 @@ class TaskControllerTest {
 
     @Autowired
     private WebTestClient webTestClient;
-
-    //endpoint de criação
-    //endpoint de edição
-
-//    @Test
-//    void shouldCreateATaskWithoutAttachments() {
-//        String title = "Tarefa um";
-//        String description = "descrevendo minha nova tarefa";
-//        Flux<FilePart> attachments = Flux.empty();
-//
-//        TaskResponse taskResponse = TaskResponse.builder()
-//                .id("123456")
-//                .title(title)
-//                .description(description)
-//                .status(TaskStatus.NOT_COMPLETED)
-//                .urlsAttachmentDownload(null)
-//                .build();
-//
-//
-//        when(taskMapper.buildTaskRequest(eq(title), eq(description), ArgumentMatchers.<Flux<FilePart>>isNull()))
-//                .thenReturn(new TaskRequest(title, description, Flux.empty()));
-//
-//        when(taskService.create(any(TaskRequest.class))).thenReturn(Mono.just(taskResponse));
-//
-//        webTestClient = webTestClient.mutate().exchangeStrategies(
-//                ExchangeStrategies.builder().codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(16 * 1024 * 1024)).build()).build();
-//
-//        webTestClient.post()
-//                .uri("/api/tasks")
-//                .contentType(MediaType.MULTIPART_FORM_DATA)
-//                .body(BodyInserters.fromMultipartData("title", title)
-//                        .with("description", description))
-//                .exchange()
-//                .expectStatus().isOk()
-//                .expectBody(TaskResponse.class)
-//                .value(response -> {
-//                    assertEquals(taskResponse.getId(), response.getId());
-//                    assertEquals(taskResponse.getTitle(), response.getTitle());
-//                    assertEquals(taskResponse.getDescription(), response.getDescription());
-//                    assertEquals(taskResponse.getUrlsAttachmentDownload(), response.getUrlsAttachmentDownload());
-//                });
-//
-//
-//    }
 
 
     @Test
@@ -155,17 +117,14 @@ class TaskControllerTest {
                 .contains(taskResponse, taskResponse2, taskResponse3);
     }
 
-    //TODO ajustar esse endpoint para devolver um 404? ou mantém devolvendo 200?
     @Test
     void shouldReturnEmptyListWhenItFindsNoTask() {
-        when(taskService.findActiveTasks()).thenReturn(Flux.just());
+        when(taskService.findActiveTasks()).thenReturn(Flux.error(new TaskNotFoundException()));
 
         webTestClient.get()
                 .uri("/api/tasks")
                 .exchange()
-                .expectStatus().isOk()
-                .expectBodyList(TaskResponse.class)
-                .hasSize(0);
+                .expectStatus().isNotFound();
     }
 
     @Test
@@ -190,5 +149,38 @@ class TaskControllerTest {
                 .uri("/api/tasks/{id}", taskId)
                 .exchange()
                 .expectStatus().isNotFound();
+    }
+
+
+    void shouldCreateATaskWithoutAttachments() {
+        String title = "Tarefa um";
+        String description = "descrevendo minha nova tarefa";
+
+        TaskResponse taskResponse = TaskResponse.builder()
+                .id("123456")
+                .title(title)
+                .description(description)
+                .status(TaskStatus.NOT_COMPLETED)
+                .urlsAttachmentDownload(null)
+                .build();
+
+        when(taskService.create(eq(title), eq(description), ArgumentMatchers.<Flux<FilePart>>isNull())).thenReturn(Mono.just(taskResponse));
+
+        webTestClient.post()
+                .uri("/api/tasks")
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(BodyInserters.fromMultipartData("title", title)
+                        .with("description", description)
+                )
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(TaskResponse.class)
+                .value(response -> {
+                    assertEquals(taskResponse.getId(), response.getId());
+                    assertEquals(taskResponse.getTitle(), response.getTitle());
+                    assertEquals(taskResponse.getDescription(), response.getDescription());
+                    assertEquals(taskResponse.getUrlsAttachmentDownload(), response.getUrlsAttachmentDownload());
+                });
+
     }
 }
